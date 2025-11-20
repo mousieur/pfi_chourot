@@ -275,7 +275,11 @@ function updateDropDownMenu() {
     let DDMenu = $("#DDMenu");
     let selectClass = selectedCategory === "" ? "fa-check" : "fa-fw";
     DDMenu.empty();
-
+    DDMenu.append($(`
+        <div class="dropdown-item menuItemLayout" id="connexionBtn">
+            <i class="menuIcon fa fa-user mx-2"></i> Connexion
+        </div>
+    `));
     DDMenu.append($(`
         <div class="dropdown-item menuItemLayout" id="allCatCmd">
             <i class="menuIcon fa ${selectClass} mx-2"></i> Toutes les catégories
@@ -312,6 +316,9 @@ function updateDropDownMenu() {
         selectedCategory = $(this).text().trim();
         await showPosts(true);
         updateDropDownMenu();
+    });
+    $('#connexionBtn').on("click", function () {
+        showCreateUserForm();
     });
 }
 function attach_Posts_UI_Events_Callback() {
@@ -561,6 +568,130 @@ function getFormData($form) {
         jsonObject[control.name] = control.value.replace(removeTag, "");
     });
     return jsonObject;
+}
+
+function showCreateUserForm() {
+    timeout();
+    showForm();
+    $("#viewTitle").text("Créer un utilisateur");
+    let create = true;
+    let user = {};
+    user.Name = "";
+    user.Email = "";
+    user.Password = "";
+    user.Avatar = "no-avatar.png";
+    user.VerifyCode = "unverified";
+    user.Created = 0;
+
+    $("#form").show();
+    $("#form").empty();
+    $("#form").append(`
+        <form class="form" id="userForm">
+            <input type="hidden" name="Created" value="${user.Created}" />
+            <input type="hidden" name="VerifyCode" value="${user.VerifyCode}" />
+
+            <label for="Email" class="form-label mb-2">Courriel</label>
+            <input 
+                class="form-control mb-2"
+                name="Email" 
+                id="Email" 
+                placeholder="Courriel"
+                type="email"
+                required
+                value="${user.Email}"
+            />
+            <input 
+                class="form-control"
+                name="EmailConf" 
+                id="EmailConf" 
+                placeholder="Vérification"
+                type="email"
+                required
+                value="${user.Email}"
+            />
+
+            <label for="Password" class="form-label mb-2">Mot de passe</label>
+            <input 
+                class="form-control mb-2"
+                name="Password" 
+                id="Password" 
+                placeholder="Mot de passe"
+                type="password"
+                required
+            />
+
+            <input 
+                class="form-control"
+                name="PasswordConf" 
+                id="PasswordConf" 
+                placeholder="Vérification"
+                type="password"
+                required
+            />
+
+            <label for="Name" class="form-label">Nom</label>
+            <input 
+                class="form-control"
+                name="Name"
+                id="Name"
+                placeholder="Nom"
+                required
+                value="${user.Name}"
+            />
+
+            <label class="form-label">Avatar</label>
+            <div class='imageUploaderContainer mb-2'>
+                <div class='imageUploader' 
+                     newImage='true' 
+                     controlId='Avatar' 
+                     imageSrc='${user.Avatar}' 
+                     waitingImage="Loading_icon.gif">
+                </div>
+            </div>
+            <div class="d-flex justify-content-center">
+                <input type="submit" value="Enregistrer" id="saveUser" class="btn btn-primary">
+            </div>
+        </form>
+    `);
+
+    initImageUploaders();
+    initFormValidation();
+
+    $("#commit").off();
+    $("#commit").click(function () {
+        $("#commit").off();
+        return $('#saveUser').trigger("click");
+    });
+
+    $('#userForm').on("submit", async function (event) {
+        event.preventDefault();
+        let u = getFormData($("#userForm"));
+        u.Created = Local_to_UTC(Date.now());
+        if (!('VerifyCode' in u) || !u.VerifyCode) u.VerifyCode = 'unverified';
+
+        let result = await new Promise(resolve => {
+            $.ajax({
+                url: Posts_API.serverHost() + "/api/accounts/register",
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(u),
+                success: data => { resolve({ success: true, data: data }); },
+                error: xhr => { resolve({ success: false, xhr: xhr }); }
+            });
+        });
+
+        if (result.success) {
+            await showPosts();
+        } else {
+            let err = result.xhr && result.xhr.responseJSON ? result.xhr.responseJSON.error_description : (result.xhr ? result.xhr.statusText : 'Erreur');
+            showError(err);
+        }
+    });
+
+    $('#cancel').off();
+    $('#cancel').on("click", async function () {
+        await showPosts();
+    });
 }
 
 
