@@ -1,7 +1,7 @@
 class Posts_API {
     static serverHost() {
-        return "https://linuxapiserver.azurewebsites.net";
-        //return "http://localhost:5000";
+        //return "https://linuxapiserver.azurewebsites.net";
+        return "http://localhost:5000";
     }
     static POSTS_API_URL() { return this.serverHost() + "/api/posts" };
     static initHttpState() {
