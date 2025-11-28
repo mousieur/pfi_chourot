@@ -81,4 +81,7 @@ class Posts_API {
             });
         });
     }
+    static checkConflictURL() {
+        return this.serverHost() + "/accounts/conflict";
+    }
 }

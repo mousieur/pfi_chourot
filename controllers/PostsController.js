@@ -1,9 +1,9 @@
-import PostModel from '../models/post.js';
+import Post from '../models/post.js';
 import Repository from '../models/repository.js';
 import Controller from './Controller.js';
 
 export default class ContactsController extends Controller {
     constructor(HttpContext) {
-        super(HttpContext, new Repository(new PostModel()));
+        super(HttpContext, new Repository(new Post()));
     }
 }

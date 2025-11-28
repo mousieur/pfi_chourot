@@ -1,4 +1,4 @@
-import UserModel from '../models/user.js';
+import User from '../models/user.js';
 import Repository from '../models/repository.js';
 import TokenManager from '../tokensManager.js';
 import * as utilities from "../utilities.js";
@@ -8,7 +8,7 @@ import AccessControl from '../accessControl.js';
 
 export default class AccountsController extends Controller {
     constructor(HttpContext) {
-        super(HttpContext, new Repository(new UserModel()), AccessControl.admin());
+        super(HttpContext, new Repository(new User()), AccessControl.admin());
     }
     // POST: /token body payload[{"Email": "...", "Password": "..."}]
     login(loginInfo) {

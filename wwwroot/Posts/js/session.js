@@ -19,6 +19,7 @@ let timeoutCallBack = () => { };
 let infinite = -1;
 let timeLeft = infinite;
 let maxStallingTime = infinite;
+let sessionToken = "";
 
 function popupMessage(message) {
     createTimeoutPopup(message);

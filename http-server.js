@@ -6,6 +6,7 @@ import APIServer from "./api-server.js";
 import RouteRegister from './router.js';
 RouteRegister.add('GET', 'Bookmarks', 'list');
 RouteRegister.add('POST', 'accounts', 'register');
+RouteRegister.add('POST', 'accounts', 'login');
 RouteRegister.add('GET', 'accounts', 'verify');
 RouteRegister.add('GET', 'accounts', 'logout');
 RouteRegister.add('PUT', 'accounts', 'modify');
@@ -13,7 +14,7 @@ RouteRegister.add('GET', 'accounts', 'remove');
 RouteRegister.add('GET', 'accounts', 'conflict');
 RouteRegister.add('POST', 'accounts', 'block');
 RouteRegister.add('POST', 'accounts', 'promote');
-RouteRegister.add('POST', 'postlikes', 'togglelike');
+RouteRegister.add('POST', 'likes', 'togglelike');
 
 let server = new APIServer();
 server.start();

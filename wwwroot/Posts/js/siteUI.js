@@ -17,7 +17,6 @@ let waiting = null;
 let showKeywords = false;
 let keywordsOnchangeTimger = null;
 
-
 Init_UI();
 async function Init_UI() {
     postsPanel = new PageManager('postsScrollPanel', 'postsPanel', 'postSample', renderPosts);
@@ -318,7 +317,7 @@ function updateDropDownMenu() {
         updateDropDownMenu();
     });
     $('#connexionBtn').on("click", function () {
-        showCreateUserForm();
+        showLoginForm();
     });
 }
 function attach_Posts_UI_Events_Callback() {
@@ -533,7 +532,7 @@ function renderPostForm(post = null) {
     if (create) $("#keepDateControl").hide();
 
     initImageUploaders();
-    initFormValidation(); // important do to after all html injection!
+    initFormValidation();
 
     $("#commit").click(function () {
         $("#commit").off();
@@ -541,6 +540,7 @@ function renderPostForm(post = null) {
     });
     $('#postForm').on("submit", async function (event) {
         event.preventDefault();
+
         let post = getFormData($("#postForm"));
         if (post.Category != selectedCategory)
             selectedCategory = "";
@@ -573,6 +573,7 @@ function getFormData($form) {
 function showCreateUserForm() {
     timeout();
     showForm();
+    $('#commit').hide();
     $("#viewTitle").text("Créer un utilisateur");
     let create = true;
     let user = {};
@@ -587,9 +588,6 @@ function showCreateUserForm() {
     $("#form").empty();
     $("#form").append(`
         <form class="form" id="userForm">
-            <input type="hidden" name="Created" value="${user.Created}" />
-            <input type="hidden" name="VerifyCode" value="${user.VerifyCode}" />
-
             <label for="Email" class="form-label mb-2">Courriel</label>
             <input 
                 class="form-control mb-2"
@@ -598,6 +596,7 @@ function showCreateUserForm() {
                 placeholder="Courriel"
                 type="email"
                 required
+                CustomErrorMessage ="Ce courriel est déjà utilisé"
                 value="${user.Email}"
             />
             <input 
@@ -609,6 +608,7 @@ function showCreateUserForm() {
                 required
                 value="${user.Email}"
             />
+            <span id="email-error" class"text-danger"></span></br>
 
             <label for="Password" class="form-label mb-2">Mot de passe</label>
             <input 
@@ -628,6 +628,7 @@ function showCreateUserForm() {
                 type="password"
                 required
             />
+            <span id="password-error" class"text-danger"></span></br>
 
             <label for="Name" class="form-label">Nom</label>
             <input 
@@ -656,6 +657,7 @@ function showCreateUserForm() {
 
     initImageUploaders();
     initFormValidation();
+    addConflictValidation(Posts_API.checkConflictURL(), 'Email', 'saveUser');
 
     $("#commit").off();
     $("#commit").click(function () {
@@ -665,13 +667,29 @@ function showCreateUserForm() {
 
     $('#userForm').on("submit", async function (event) {
         event.preventDefault();
+
+        let email = $("#Email").val();
+        let emailConf = $("#EmailConf").val();
+        let password = $("#Password").val();
+        let passwordConf = $("#PasswordConf").val();
+        if (email !== emailConf) {
+            $("#email-error").text("Les courriels ne concordent pas")
+            return;
+        }
+        $("#email-error").text("")
+        if (password !== passwordConf) {
+            $("#password-error").text("Les mots de passe ne concordent pas")
+            return;
+        }
+        $("#password-error").text("")
+
         let u = getFormData($("#userForm"));
-        u.Created = Local_to_UTC(Date.now());
-        if (!('VerifyCode' in u) || !u.VerifyCode) u.VerifyCode = 'unverified';
+        delete u.EmailConf;
+        delete u.PasswordConf;
 
         let result = await new Promise(resolve => {
             $.ajax({
-                url: Posts_API.serverHost() + "/api/accounts/register",
+                url: Posts_API.serverHost() + "/accounts/register",
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(u),
@@ -693,7 +711,179 @@ function showCreateUserForm() {
         await showPosts();
     });
 }
+function showLoginForm() {
+    timeout();
+    showForm();
+    $('#commit').hide();
+    $("#viewTitle").text("Connexion");
 
+    $("#form").show();
+    $("#form").empty();
+
+    $("#form").append(`
+        <form class="form" id="loginForm">
+            <label for="Email" class="form-label mb-2">Courriel</label>
+            <input 
+                class="form-control mb-2"
+                name="Email" 
+                id="Email" 
+                placeholder="Courriel"
+                type="email"
+                required
+            />
+
+            <label for="Password" class="form-label mb-2">Mot de passe</label>
+            <input 
+                class="form-control mb-3"
+                name="Password" 
+                id="Password" 
+                placeholder="Mot de passe"
+                type="password"
+                required
+            />
+
+            <span id="login-error" class="text-danger"></span></br>
+
+            <div class="d-flex justify-content-center mt-3">
+                <input type="submit" value="Se connecter" id="loginBtn" class="btn btn-primary">
+            </div>
+            <div class="d-flex justify-content-center mt-3">
+                <input type="submit" value="Créer un compte" id="createAccount" class="btn btn-secondary">
+            </div>
+        </form>
+    `);
+    $("#createAccount").on("click", () => {
+        showCreateUserForm();
+    });
+    $("#commit").off();
+    $("#commit").click(function () {
+        $("#commit").off();
+        return $('#loginBtn').trigger("click");
+    });
+
+
+    $('#loginForm').on("submit", async function (event) {
+        event.preventDefault();
+
+        let u = getFormData($("#loginForm"));
+
+        let result = await new Promise(resolve => {
+            $.ajax({
+                url: Posts_API.serverHost() + "/accounts/login",
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(u),
+                success: data => { resolve({ success: true, data: data }); },
+                error: xhr => { resolve({ success: false, xhr: xhr }); }
+            });
+        });
+
+        if (result.success) {
+            window.currentUser = result.data;
+            if (result.data.VerifyCode !== "verified") {
+                showConfirmationForm();
+            } else {
+                await showPosts();
+                initTimeout(1200, () => {
+                    logoutUser();
+                });
+                timeout();
+                document.addEventListener("click", timeout);
+                sessionToken = result.data.newToken;
+            }
+        } else {
+            let err = result.xhr?.responseJSON?.error_description ||
+                result.xhr?.statusText ||
+                "Erreur de connexion";
+
+            $("#login-error").text(err);
+            showError(err);
+        }
+    });
+    $('#cancel').off();
+    $('#cancel').on("click", async function () {
+        await showPosts();
+    });
+}
+function showConfirmationForm() {
+    timeout();
+    showForm();
+    $('#commit').hide();
+    $("#viewTitle").text("Valider votre compte");
+
+    $("#form").show();
+    $("#form").empty();
+
+    $("#form").append(`
+        <form class="form" id="verifyForm">
+            <label for="Code" class="form-label mb-2">Code</label>
+            <input 
+                class="form-control mb-2"
+                name="Code" 
+                id="Code" 
+                placeholder="Code"
+                type="text"
+                required
+            />
+            <div class="d-flex justify-content-center mt-3">
+                <input type="submit" value="Valider" id="verifyBtn" class="btn btn-secondary">
+            </div>
+        </form>
+    `);
+    $('#verifyForm').on("submit", async function (event) {
+        event.preventDefault();
+        
+        let verifyCode = getFormData($("#verifyForm")).Code;
+        
+        // Get current user from storage
+        let user = window.currentUser;
+        if (!user) {
+            showError("Aucun utilisateur en cours de vérification");
+            return;
+        }
+        
+        let result = await new Promise(resolve => {
+            $.ajax({
+                url: Posts_API.serverHost() + `/accounts/verify?id=${user.Id}&code=${verifyCode}`,
+                type: 'GET',
+                contentType: 'application/json',
+                success: data => { resolve({ success: true, data: data }); },
+                error: xhr => { resolve({ success: false, xhr: xhr }); }
+            });
+        });
+        
+        if (result.success) {
+            // User verified, show posts
+            await showPosts();
+            initTimeout(1200, () => {
+                logoutUser();
+            });
+            timeout();
+            document.addEventListener("click", timeout);
+            if (window.currentUser && window.currentUser.newToken) {
+                sessionToken = window.currentUser.newToken;
+            }
+        } else {
+            let err = result.xhr?.responseJSON?.error_description ||
+                result.xhr?.statusText ||
+                "Erreur de vérification";
+            showError(err);
+        }
+    });
+}
+async function logoutUser() {
+    await new Promise(resolve => {
+        $.ajax({
+            url: Posts_API.serverHost() + "/accounts/logout",
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(u),
+            success: data => { resolve({ success: true, data: data }); },
+            error: xhr => { resolve({ success: false, xhr: xhr }); }
+        });
+    });
+    sessionToken = "";
+}
 
 async function renderError(message) {
     await Posts_API.logout();

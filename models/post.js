@@ -21,5 +21,6 @@ export default class Post extends Model {
         this.bind(
             post, 'OwnerId', User, "Name, Avatar"
         )
+        return post
     }
 }
